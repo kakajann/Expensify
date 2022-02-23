@@ -153,7 +153,8 @@ class ReportActionsView extends React.Component {
             Report.updateLastReadActionID(this.props.reportID);
         }
 
-        Report.fetchActions(this.props.reportID);
+        // Provide offset to test onStartReached
+        Report.fetchActions(this.props.reportID, 10);
 
         const copyShortcutConfig = CONST.KEYBOARD_SHORTCUTS.COPY;
         const copyShortcutModifiers = KeyboardShortcut.getShortcutModifiers(copyShortcutConfig.modifiers);
@@ -289,28 +290,42 @@ class ReportActionsView extends React.Component {
     }
 
     /**
+     * @param {String} position
      * Retrieves the next set of report actions for the chat once we are nearing the end of what we are currently
      * displaying.
      */
-    loadMoreChats() {
+    loadMoreChats(position = 'up') {
         // Only fetch more if we are not already fetching so that we don't initiate duplicate requests.
         if (this.props.isLoadingReportActions) {
             return;
         }
 
-        const minSequenceNumber = _.chain(this.props.reportActions)
-            .pluck('sequenceNumber')
-            .min()
-            .value();
+        if (position === 'up') {
+            const minSequenceNumber = _.chain(this.props.reportActions)
+                .pluck('sequenceNumber')
+                .min()
+                .value();
 
-        if (minSequenceNumber === 0) {
-            return;
+            if (minSequenceNumber === 0) {
+                return;
+            }
+
+            // Retrieve the next REPORT.ACTIONS.LIMIT sized page of comments, unless we're near the beginning, in which
+            // case just get everything starting from 0.
+            const offset = Math.max(minSequenceNumber - CONST.REPORT.ACTIONS.LIMIT, 0);
+            Report.fetchActionsWithLoadingState(this.props.reportID, offset);
         }
 
-        // Retrieve the next REPORT.ACTIONS.LIMIT sized page of comments, unless we're near the beginning, in which
-        // case just get everything starting from 0.
-        const offset = Math.max(minSequenceNumber - CONST.REPORT.ACTIONS.LIMIT, 0);
-        Report.fetchActionsWithLoadingState(this.props.reportID, offset);
+        if (position === 'down') {
+            const reportSize = (_.size(this.props.reportActions) - 1);
+            const isEnd = reportSize === this.props.report.maxSequenceNumber;
+
+            if (isEnd) {
+                return;
+            }
+
+            Report.fetchActionsWithLoadingState(this.props.reportID, reportSize + 10);
+        }
     }
 
     /**
@@ -569,7 +584,8 @@ class ReportActionsView extends React.Component {
                     keyExtractor={this.keyExtractor}
                     initialRowHeight={32}
                     initialNumToRender={this.calculateInitialNumToRender()}
-                    onEndReached={this.loadMoreChats}
+                    onEndReached={() => this.loadMoreChats('up')}
+                    onStartReached={() => this.loadMoreChats('down')}
                     onEndReachedThreshold={0.75}
                     ListFooterComponent={this.props.isLoadingReportActions
                         ? <ActivityIndicator size="small" color={themeColors.spinner} />

@@ -214,7 +214,8 @@ const CONST = {
         DROP_NATIVE_ID: 'report-dropzone',
         MAXIMUM_PARTICIPANTS: 8,
         ACTIONS: {
-            LIMIT: 50,
+            // TO SEE BIDRECTIONAL SCROLL CLEARLY. MUST BE REVERTED
+            LIMIT: 10,
             TYPE: {
                 IOU: 'IOU',
                 ADDCOMMENT: 'ADDCOMMENT',
